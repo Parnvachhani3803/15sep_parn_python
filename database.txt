@@ -1,0 +1,85 @@
+import mysql.connector
+
+# Connect to the database
+conn = mysql.connector.connect(host='localhost', user='root', password='', database='bank')
+
+# Create a cursor object
+cur = conn.cursor()
+
+# Create Bank table
+cur.execute('''CREATE TABLE Bank (
+               branch_id INT PRIMARY KEY,
+               branch_name VARCHAR(50) NOT NULL,
+               branch_city VARCHAR(50) NOT NULL
+            )''')
+
+# Create Account holder table
+cur.execute('''CREATE TABLE Account_holder (
+               account_holder_id INT PRIMARY KEY,
+               account_no VARCHAR(20) NOT NULL,
+               account_holder_name VARCHAR(50) NOT NULL,
+               city VARCHAR(50) NOT NULL,
+               contact VARCHAR(20) NOT NULL,
+               date_of_account_created DATE NOT NULL,
+               account_status VARCHAR(20) NOT NULL,
+               account_type VARCHAR(20) NOT NULL,
+               balance FLOAT NOT NULL
+            )''')
+
+# Create Loan table
+cur.execute('''CREATE TABLE Loan (
+               loan_no INT PRIMARY KEY,
+               branch_id INT NOT NULL,
+               account_holder_id INT NOT NULL,
+               loan_amount FLOAT NOT NULL,
+               loan_type VARCHAR(20) NOT NULL,
+               FOREIGN KEY (branch_id) REFERENCES Bank(branch_id),
+               FOREIGN KEY (account_holder_id) REFERENCES Account_holder(account_holder_id)
+            )''')
+
+# Commit changes to the database
+conn.commit()
+
+# Intra bank transfer transaction
+try:
+    # Debit $100 from account A
+    cur.execute('UPDATE Account_holder SET balance = balance - 100 WHERE account_no = "A"')
+    
+    # Credit $100 to account B
+    cur.execute('UPDATE Account_holder SET balance = balance + 100 WHERE account_no = "B"')
+    
+    # Commit transaction
+    cur.execute('COMMIT')
+    print('Transaction successful.')
+except:
+    # Rollback transaction in case of any error
+    cur.execute('ROLLBACK')
+    print('Transaction failed.')
+    
+# Fetch account holders from the same city
+cur.execute('SELECT * FROM Account_holder WHERE city = "New York"')
+rows = cur.fetchall()
+for row in rows:
+    print(row)
+
+# Fetch account number and account holder name for accounts created after 15th of any month
+cur.execute('SELECT account_no, account_holder_name FROM Account_holder WHERE DAY(date_of_account_created) > 15')
+rows = cur.fetchall()
+for row in rows:
+    print(row)
+
+# Display city name and count the branches in that city
+cur.execute('SELECT branch_city, COUNT(*) AS Count_Branch FROM Bank GROUP BY branch_city')
+rows = cur.fetchall()
+for row in rows:
+    print(row)
+
+# Display account holder’s id, account holder’s name, branch id, and loan amount for people who have taken loans
+cur.execute('SELECT Account_holder.account_holder_id, Account_holder.account_holder_name, Loan.branch_id, Loan.loan_amount FROM Account_holder INNER JOIN Loan ON Account_holder.account_holder_id = Loan.account_holder_id')
+rows = cur.fetchall()
+for row in rows:
+    print(row)
+
+# Close the cursor and connection
+cur.close()
+conn.close()
